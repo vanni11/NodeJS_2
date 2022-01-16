@@ -17,7 +17,7 @@ MongoClient.connect(
     db = client.db('todoapp'); //todoapp이라는 database에 연결
 
     // // DB insert 테스트
-    // db.collection('post').insertOne({_id : 100, 이름 : 'John', 나이 : 20}, (err, result) => {
+    // db.collection('post').insertOne({_id:100, 이름:'John', 나이:20}, (err, result) => {
     //     console.log('저장완료');
     // });
 
@@ -46,13 +46,24 @@ app.get('/write', (req, res) => {
 
 // 어떤사람이 /add 경로로 POST 요청을 하면 무엇을 해주세요
 app.post('/newpost', (req, res) => {
-    res.send('전송완료');
     // input에 작성한 정보가 서버로 전달되네!
     console.log(req.body.title); // 요청했던 form의 title 인풋 수신
     console.log(req.body); // 요청했던 form 인풋 수신 (object 자료형으로)
 
-    db.collection('post').insertOne({title : req.body.title, date : req.body.date}, (err, result) => {
-        console.log('저장완료');
+    // 시퀀스 만들듯이 번호 생성
+    db.collection('counter').findOne({name:'게시물개수'}, (err, result) => {
+        var counter = result.totalPost; //var는 function안에서만 사용가능
+
+        // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
+        db.collection('post').insertOne({_id:counter, title:req.body.title, date:req.body.date}, (err, result) => {
+            // 게시물 번호 1씩 증가
+            // 다수 수정은 updateMany사용 // 콜백함수는 optional
+            db.collection('counter').updateOne ({name:'게시물개수'},{$inc:{totalPost:1} /* $set:{totalPost:counter+1} */}, (err, result) => {
+                if(err) return console.log(err);
+            });
+            console.log('저장완료');
+            res.send('전송완료');
+        });
     });
 });
 
