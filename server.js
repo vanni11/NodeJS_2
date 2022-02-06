@@ -44,7 +44,7 @@ app.get('/write', (req, res) => {
     res.sendFile(__dirname + '/write.html');
 });
 
-// 어떤사람이 /add 경로로 POST 요청을 하면 무엇을 해주세요
+// 어떤사람이 /newpost 경로로 POST 요청을 하면 무엇을 해주세요
 app.post('/newpost', (req, res) => {
     // input에 작성한 정보가 서버로 전달되네!
     console.log(req.body.title); // 요청했던 form의 title 인풋 수신
@@ -52,7 +52,7 @@ app.post('/newpost', (req, res) => {
 
     // 시퀀스 만들듯이 번호 생성
     db.collection('counter').findOne({name:'게시물개수'}, (err, result) => {
-        var counter = result.totalPost; //var는 function안에서만 사용가능
+        var counter = result.totalPost; // var는 function안에서만 사용가능
 
         // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
         db.collection('post').insertOne({_id:counter, title:req.body.title, date:req.body.date}, (err, result) => {
@@ -76,5 +76,17 @@ app.get('/list', function(req, res){
         // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
         // DB에서 가져온 result값을 posts변수안에 넣어줌
         res.render('list.ejs', {posts: result});
+    });
+});
+
+app.delete('/delete', function(req, res){
+    console.log(req.body);
+
+    // req.body는 _id : '1' 로 넘어와서 DB상의 _id : 1 (int) 와 안맞으므로 바꿔줌
+    req.body._id = parseInt(req.body._id);
+    // req.body의 게시물번호의 글을 DB에서 삭제
+    db.collection('post').deleteOne(req.body /* 어떤항목을 삭제할지 (쿼리라고 생각) */, function(err, result){
+        console.log('삭제완료');
+        res.status(200).send({ message : '성공했습니다!!' }); // 응답코드 200(성공)일때 메세지 보냄 / send의 파라미터가 object형이 아니여도됨
     });
 });

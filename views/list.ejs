@@ -34,12 +34,58 @@
     </div>
   </nav>
 
-  <% for (var i =0; i < posts.length; i++){ %>
-    <h4>할일 제목 : <%= posts[i].title %></h4>
-    <p>할일 마감날짜 : <%= posts[i].date %></p>
-  <% } %>
+  <!-- 부트스트랩 문법 : ml-2 = margin left, my-3 = margin y-->
+  <h4 class='ml-2 my-3'>서버에서 가져온 할 일 리스트</h4>
 
-  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+  <ul class="list-group">
+    <% for (var i =0; i < posts.length; i++){ %>
+    <li class="list-group-item" data-id="<%=posts[i]._id%>"> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
+      <p>글번호 : <%= posts[i]._id %></p>
+      <h4>할일 제목 : <%= posts[i].title %></h4>
+      <p>할일 마감날짜 : <%= posts[i].date %></p>
+      <button type="button" class="btn btn-danger delete" data-id="<%=posts[i]._id%>">삭제</button> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
+    </li>
+    <% } %>
+  </ul>
+
+  <!-- 부트스트랩에서 가져오면서 붙어있던 integrity, crossorigin 속성있던건 지웠음-->
+  <!-- CDN방식의 jQuery 설치임! 가운데 3.4.1.slim.min에서 slim부분은 지움-->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script>
+
+    // 클래스명이 delete인 요소 클릭했을때 이벤트
+    $('.delete').click(function(e){
+
+      // e라는 요소에서 값가져옴
+      var id = e.target.dataset.id; // e.target : 지금 클릭한것
+      var t = $(this); // this : 지금 이벤트 발생한것 (e.target과 거의 항상 같다고생각해도됨)
+
+      //jQuery 문법으로 AJAX 요청 (js문법으로도 할수있지만 굳이 그럴필요없음)
+      $.ajax({
+        method : 'DELETE', // 서버에 새로고침없이 DELETE 요청할것임
+        url : '/delete', // 요청할 경로
+        data : {_id : id} // 요청과 함께 보낼 데이터
+
+      // ------------- status:200(성공)으로 올때 -------------
+      }).done(function(result){
+        // 삭제해도 아무반응 없는거 해결
+        // 1. 페이지를 강제로 새로고침하기
+        //location.reload();
+        // 2. 삭제버튼 누른 li를 제거
+        t.parent('li').fadeOut(); // fadeOut : 서서히 사라지게 하는 jQuery문법
+
+        console.log('성공했습니다!!');
+
+      // s------------- status:400(실패)로 올때 -> 이런식이라고 참고만 하기 -------------
+      }).fail(function(xhr, textStatus, errorThrown){
+        console.log(xhr, textStatus/*응답 코드*/, errorThrown/*에러 메세지*/);
+      });
+
+    });
+
+  </script>
+
+  
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 </body>
