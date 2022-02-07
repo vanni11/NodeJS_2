@@ -6,12 +6,14 @@ app.use(express.urlencoded({extended: true}));
 // ejs로 쓴 html을 렌더링할 수 있게함
 app.set('view engine', 'ejs');
 
+// static 파일 보관하기 위해 public 폴더쓴다고 명시 (미들웨어 역할)
+app.use('/public', express.static('public'));
+
 var db;
 MongoClient.connect(
 'mongodb+srv://taehun:alfm@cluster0.rbzvi.mongodb.net/todoapp?retryWrites=true&w=majority'
 , {useUnifiedTopology: true} //warning메세지 표시 안되도록해줌
 , function(err, client) {
-
     if(err) return console.log('@@@' + err);
 
     db = client.db('todoapp'); //todoapp이라는 database에 연결
@@ -27,11 +29,12 @@ MongoClient.connect(
     app.listen(8080, function(){
         console.log('listening on 8080');
     });
-
 })
 
 app.get('/', function(req, res){
-    res.sendFile(__dirname + '/index.html');
+    // html이였을때 이렇게 하지만 ejs로 바꿈
+    //res.sendFile(__dirname + '/index.html');
+    res.render('index.ejs');
 });
 
 app.get('/pet', function(req, res){
@@ -41,14 +44,16 @@ app.get('/pet', function(req, res){
 // =>(arrow)는 ES6 신문법임. 뭘쓸지는 취향차이.
 // 함수내부에서 this키워드값이 바뀐다는데 보통상황에선 신경쓸일 없음
 app.get('/write', (req, res) => {
-    res.sendFile(__dirname + '/write.html');
+    // html이였을때 이렇게 하지만 ejs로 바꿈
+    //res.sendFile(__dirname + '/write.html');
+    res.render('write.ejs');
 });
 
 // 어떤사람이 /newpost 경로로 POST 요청을 하면 무엇을 해주세요
 app.post('/newpost', (req, res) => {
     // input에 작성한 정보가 서버로 전달되네!
-    console.log(req.body.title); // 요청했던 form의 title 인풋 수신
-    console.log(req.body); // 요청했던 form 인풋 수신 (object 자료형으로)
+    //console.log(req.body.title); // 요청했던 form의 title 인풋 수신
+    //console.log(req.body); // 요청했던 form 인풋 수신 (object 자료형으로)
 
     // 시퀀스 만들듯이 번호 생성
     db.collection('counter').findOne({name:'게시물개수'}, (err, result) => {
@@ -88,5 +93,17 @@ app.delete('/delete', function(req, res){
     db.collection('post').deleteOne(req.body /* 어떤항목을 삭제할지 (쿼리라고 생각) */, function(err, result){
         console.log('삭제완료');
         res.status(200).send({ message : '성공했습니다!!' }); // 응답코드 200(성공)일때 메세지 보냄 / send의 파라미터가 object형이 아니여도됨
+    });
+});
+
+// detail/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
+app.get('/detail/:id', function(req, res){
+    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
+        if(result == null) {
+            res.send('존재하지 않는 게시물 번호입니다!!!');
+        } else {
+            console.log(result);
+            res.render('detail.ejs', {data : result});
+        }
     });
 });
