@@ -9,6 +9,11 @@ app.set('view engine', 'ejs');
 // static 파일 보관하기 위해 public 폴더쓴다고 명시 (미들웨어 역할)
 app.use('/public', express.static('public'));
 
+// PUT, DELETE 쓸수있게하는 라이브러리
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
+
+/* ------------------------------------------------------------DB 연결------------------------------------------------------------*/
 var db;
 MongoClient.connect(
 'mongodb+srv://taehun:alfm@cluster0.rbzvi.mongodb.net/todoapp?retryWrites=true&w=majority'
@@ -31,6 +36,7 @@ MongoClient.connect(
     });
 })
 
+/* ------------------------------------------------------------ 메인 화면 ------------------------------------------------------------*/
 app.get('/', function(req, res){
     // html이였을때 이렇게 하지만 ejs로 바꿈
     //res.sendFile(__dirname + '/index.html');
@@ -41,6 +47,7 @@ app.get('/pet', function(req, res){
     res.send('펫용품 쇼핑 페이지입니다.');
 });
 
+/* ------------------------------------------------------------ 게시물 작성 : C ------------------------------------------------------------*/
 // =>(arrow)는 ES6 신문법임. 뭘쓸지는 취향차이.
 // 함수내부에서 this키워드값이 바뀐다는데 보통상황에선 신경쓸일 없음
 app.get('/write', (req, res) => {
@@ -61,8 +68,9 @@ app.post('/newpost', (req, res) => {
 
         // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
         db.collection('post').insertOne({_id:counter, title:req.body.title, date:req.body.date}, (err, result) => {
-            // 게시물 번호 1씩 증가
-            // 다수 수정은 updateMany사용 // 콜백함수는 optional
+            // 게시물 번호 1씩 증가 -> $inc : 증가, set : 업데이트 (없으면 추가)
+            // 다수 수정은 updateMany사용
+            // updateOne(수정할 게시물, 수정값, 콜백함수(optional))
             db.collection('counter').updateOne ({name:'게시물개수'},{$inc:{totalPost:1} /* $set:{totalPost:counter+1} */}, (err, result) => {
                 if(err) return console.log(err);
             });
@@ -72,6 +80,7 @@ app.post('/newpost', (req, res) => {
     });
 });
 
+/* ------------------------------------------------------------ 게시물 읽기 : R ------------------------------------------------------------*/
 // 어떤사람이 /list 경로로 GET 요청을 하면 DB에 저장된 데이터 표시된 HTML 보여주세요
 app.get('/list', function(req, res){
     // DB데이터 꺼내옴
@@ -84,6 +93,7 @@ app.get('/list', function(req, res){
     });
 });
 
+/* ------------------------------------------------------------ 게시물 삭제 : D ------------------------------------------------------------*/
 app.delete('/delete', function(req, res){
     console.log(req.body);
 
@@ -105,5 +115,25 @@ app.get('/detail/:id', function(req, res){
             console.log(result);
             res.render('detail.ejs', {data : result});
         }
+    });
+});
+
+/* ------------------------------------------------------------ 게시물 수정 : U ------------------------------------------------------------*/
+// edit/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
+app.get('/edit/:id', function(req, res){
+    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
+        if(result == null) {
+            res.send('존재하지 않는 게시물 번호입니다!!!');
+        } else {
+            console.log(result);
+            res.render('edit.ejs', {data : result});
+        }
+    });
+});
+
+app.put('/editpost', function(req, res){
+    db.collection('post').updateOne({_id: parseInt(req.body.id)}, {$set : {title: req.body.title, date: req.body.date}}, function(err, result){
+        if(err) console.log(err);
+        res.redirect('/list');
     });
 });

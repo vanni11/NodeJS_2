@@ -25,6 +25,7 @@
           <p>할일 마감날짜 : <%= posts[i].date %></p>
         </a>
         <button type="button" class="btn btn-danger delete" data-id="<%=posts[i]._id%>">삭제</button> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
+        <button type="button" class="btn btn-warning edit" data-id="<%=posts[i]._id%>" onclick="location.href='/edit/<%=posts[i]._id%>'">수정</button> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
       </li>
       <% } %>
     </ul>

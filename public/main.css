@@ -1,3 +1,17 @@
 body {
-    font-family: '나눔고딕';
+    font-family: '배달의민족 도현';
+}
+
+.carousel-inner > .carousel-item {
+    height: 50%;
+    background-color: black;
+}
+.carousel-inner .carousel-item img {
+    position:relative;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    max-width: 1000px;
 }
