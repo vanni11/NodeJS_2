@@ -2,6 +2,11 @@ body {
     font-family: '배달의민족 도현';
 }
 
+/* 비밀번호 입력시 보이지 않아서 -> 폼 입력시에만 폰트 변경 */
+.form-control {
+    font-family: '나눔고딕';
+}
+
 .carousel-inner > .carousel-item {
     height: 50%;
     background-color: black;
