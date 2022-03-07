@@ -27,6 +27,14 @@
       // 쿼리스트링으로 경로를 바꿔준다 (window.location.replace : url을 바꿔줌 -> get요청이랑 같은 기능)
       window.location.replace('/search?value=' + searchInput);
     });
+
+    // 쿼리스트링 사용방법 2 - 오브젝트로 만들어서 관리하는 방법
+    var data = {value: 'searchInput', value2: '2'};
+    $.param(data);
+
+    // 쿼리스트링 사용방법 3 - 폼태그를 serialize
+    $(search-input).serialize();
+
   </script>
 
   <div class="container">
@@ -80,7 +88,6 @@
     });
   </script>
   
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 </body>

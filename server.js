@@ -96,6 +96,41 @@ app.get('/list', function(req, res){
     });
 });
 
+// 게시물 검색 - 쿼리스트링 방식
+app.get('/search', (req, res) => {
+    // 원래는 req.body로 폼속성을 가져왔는데, 쿼리스트링은 req.query
+    // 강의에선 정규식을 - 자바스크립트 표현인 /abc/ 로 사용하면 문자열만 안에 넣을 수 있어서 못쓴다고했는데
+    // 1. 아래같은 몽고DB 문법이 있으니 이걸쓰면됨 -> 이게 제일 나은듯...
+    //db.collection('post').find({title: {'$regex' : req.query.value}}).toArray((err, result) => {
+
+    // 2. 미리 만들어둔 text index를 이용하여 검색엔진스럽게 검색가능 (빠른검색, 연산자로 검색기능)
+    //db.collection('post').find( {$text: { $search: req.query.value }} ).toArray((err, result) => {
+
+    // 3. MongoDB의 searchIndex 사용
+    // aggregate 사용 (searchIndex 쓰려면 사용해야됨) -> 다양한 기능이 있으므로 노션참고
+    var 검색조건 = [
+        {
+          $search: {
+            index: 'titleSearch',
+            text: {
+              query: req.query.value,
+              path: 'title'  // 제목,날짜 둘다 찾고 싶으면 ['title', 'date']
+            }
+          }
+        }
+        //, {$sort: {_id: 1}} //id기준 오름차순
+        //, {$limit: 5} //상위 다섯개만 가져옴
+        , {$project: {title: 1, _id: 0, score: {$meta: "searchScore"}}} //검색결과에서 원하는값만 가져옴 (저장한 데이터가 아닌 score라는 값도 가져올수있음) -> SELECT와 유사
+    ]
+    db.collection('post').aggregate(검색조건).toArray((err, result) => {
+
+        console.log(result);
+        // 강의에선 검색결과 보여주는 search.ejs 새로 만듬 / 그냥 아래처럼 list.ejs 그대로 써도 될듯?
+        res.render('list.ejs', {posts: result});
+    });
+
+});
+
 /* ------------------------------------------------------------ 게시물 삭제 : D ------------------------------------------------------------*/
 app.delete('/delete', function(req, res){
     console.log(req.body);
@@ -209,6 +244,7 @@ passport.deserializeUser(function(id, done){
 });
 
 /* ------------------------------------------------------------ 마이페이지 ------------------------------------------------------------*/
+//#region
 app.get('/mypage', checkLogin/* 두번째 인자에 넣는 방법으로 미들웨어를 쓴다 */, function(req, res){
     console.log(req.user);
     res.render('mypage.ejs', {user: req.user});
@@ -222,3 +258,4 @@ function checkLogin(req, res, next){
         res.send('로그인이 필요합니다!');
     }
 }
+//#endregion
