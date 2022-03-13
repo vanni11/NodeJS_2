@@ -50,135 +50,7 @@ app.get('/pet', function(req, res){
     res.send('펫용품 쇼핑 페이지입니다.');
 });
 
-/* ------------------------------------------------------------ 게시물 작성 : C ------------------------------------------------------------*/
-// =>(arrow)는 ES6 신문법임. 뭘쓸지는 취향차이.
-// 함수내부에서 this키워드값이 바뀐다는데 보통상황에선 신경쓸일 없음
-app.get('/write', (req, res) => {
-    // html이였을때 이렇게 하지만 ejs로 바꿈
-    //res.sendFile(__dirname + '/write.html');
-    res.render('write.ejs');
-});
-
-// 어떤사람이 /newpost 경로로 POST 요청을 하면 무엇을 해주세요
-app.post('/newpost', (req, res) => {
-    // input에 작성한 정보가 서버로 전달되네!
-    //console.log(req.body.title); // 요청했던 form의 title 인풋 수신
-    //console.log(req.body); // 요청했던 form 인풋 수신 (object 자료형으로)
-
-    // 시퀀스 만들듯이 번호 생성
-    db.collection('counter').findOne({name:'게시물개수'}, (err, result) => {
-        var counter = result.totalPost; // var는 function안에서만 사용가능
-
-        // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
-        db.collection('post').insertOne({_id:counter, title:req.body.title, date:req.body.date}, (err, result) => {
-            // 게시물 번호 1씩 증가 -> $inc : 증가, set : 업데이트 (없으면 추가)
-            // 다수 수정은 updateMany사용
-            // updateOne(수정할 게시물, 수정값, 콜백함수(optional))
-            db.collection('counter').updateOne ({name:'게시물개수'},{$inc:{totalPost:1} /* $set:{totalPost:counter+1} */}, (err, result) => {
-                if(err) return console.log(err);
-            });
-            console.log('저장완료');
-            res.send('전송완료');
-        });
-    });
-});
-
-/* ------------------------------------------------------------ 게시물 읽기 : R ------------------------------------------------------------*/
-// 어떤사람이 /list 경로로 GET 요청을 하면 DB에 저장된 데이터 표시된 HTML 보여주세요
-app.get('/list', function(req, res){
-    // DB데이터 꺼내옴
-    // post라는 collection의 모든데이터 가져옴
-    db.collection('post').find().toArray((err, result) => {
-        console.log(result);
-        // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
-        // DB에서 가져온 result값을 posts변수안에 넣어줌
-        res.render('list.ejs', {posts: result});
-    });
-});
-
-// 게시물 검색 - 쿼리스트링 방식
-app.get('/search', (req, res) => {
-    // 원래는 req.body로 폼속성을 가져왔는데, 쿼리스트링은 req.query
-    // 강의에선 정규식을 - 자바스크립트 표현인 /abc/ 로 사용하면 문자열만 안에 넣을 수 있어서 못쓴다고했는데
-    // 1. 아래같은 몽고DB 문법이 있으니 이걸쓰면됨 -> 이게 제일 나은듯...
-    //db.collection('post').find({title: {'$regex' : req.query.value}}).toArray((err, result) => {
-
-    // 2. 미리 만들어둔 text index를 이용하여 검색엔진스럽게 검색가능 (빠른검색, 연산자로 검색기능)
-    //db.collection('post').find( {$text: { $search: req.query.value }} ).toArray((err, result) => {
-
-    // 3. MongoDB의 searchIndex 사용
-    // aggregate 사용 (searchIndex 쓰려면 사용해야됨) -> 다양한 기능이 있으므로 노션참고
-    var 검색조건 = [
-        {
-          $search: {
-            index: 'titleSearch',
-            text: {
-              query: req.query.value,
-              path: 'title'  // 제목,날짜 둘다 찾고 싶으면 ['title', 'date']
-            }
-          }
-        }
-        //, {$sort: {_id: 1}} //id기준 오름차순
-        //, {$limit: 5} //상위 다섯개만 가져옴
-        , {$project: {title: 1, _id: 0, score: {$meta: "searchScore"}}} //검색결과에서 원하는값만 가져옴 (저장한 데이터가 아닌 score라는 값도 가져올수있음) -> SELECT와 유사
-    ]
-    db.collection('post').aggregate(검색조건).toArray((err, result) => {
-
-        console.log(result);
-        // 강의에선 검색결과 보여주는 search.ejs 새로 만듬 / 그냥 아래처럼 list.ejs 그대로 써도 될듯?
-        res.render('list.ejs', {posts: result});
-    });
-
-});
-
-/* ------------------------------------------------------------ 게시물 삭제 : D ------------------------------------------------------------*/
-app.delete('/delete', function(req, res){
-    console.log(req.body);
-
-    // req.body는 _id : '1' 로 넘어와서 DB상의 _id : 1 (int) 와 안맞으므로 바꿔줌
-    req.body._id = parseInt(req.body._id);
-    // req.body의 게시물번호의 글을 DB에서 삭제
-    db.collection('post').deleteOne(req.body /* 어떤항목을 삭제할지 (쿼리라고 생각) */, function(err, result){
-        console.log('삭제완료');
-        res.status(200).send({ message : '성공했습니다!!' }); // 응답코드 200(성공)일때 메세지 보냄 / send의 파라미터가 object형이 아니여도됨
-    });
-});
-
-// detail/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
-app.get('/detail/:id', function(req, res){
-    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
-        if(result == null) {
-            res.send('존재하지 않는 게시물 번호입니다!!!');
-        } else {
-            console.log(result);
-            res.render('detail.ejs', {data : result});
-        }
-    });
-});
-
-/* ------------------------------------------------------------ 게시물 수정 : U ------------------------------------------------------------*/
-// edit/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
-app.get('/edit/:id', function(req, res){
-    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
-        if(result == null) {
-            res.send('존재하지 않는 게시물 번호입니다!!!');
-        } else {
-            console.log(result);
-            res.render('edit.ejs', {data : result});
-        }
-    });
-});
-
-app.put('/editpost', function(req, res){
-    db.collection('post').updateOne({_id: parseInt(req.body.id)}, {$set : {title: req.body.title, date: req.body.date}}, function(err, result){
-        if(err) console.log(err);
-        res.redirect('/list');
-    });
-});
-
-
 /* ------------------------------------------------------------ 회원인증 기능 시작 ------------------------------------------------------------*/
-// 회원가입기능은 너무 복잡하므로 만들지않고 DB에 회원정보 직접생성함
 // 비밀번호 암호화도 여기서는 하지않음
 
 const passport = require('passport');
@@ -232,7 +104,7 @@ passport.use(new LocalStrategy({
 // 위에까지로 로그인 기능은 완성인데, 로그인 유지시키려면 아래처럼 세션만들기
 // id를 이용한 암호문을 세션으로 저장시키는 코드 (로그인 성공시 실행)
 passport.serializeUser(function(user, done){
-done(null, user.id); // 이후에는 세션의 id정보를 쿠키로 보내짐
+    done(null, user.id); // 이후에는 세션의 id정보를 쿠키로 보내짐
 });
 
 // 해당 세션 데이터를 가지고있는게 DB에 있는지 검증 (마이페이지 접속시 실행)
@@ -243,8 +115,23 @@ passport.deserializeUser(function(id, done){
     });
 });
 
+/* ------------------------------------------------------------ 회원가입 ------------------------------------------------------------*/
+// passport 세팅 아래 만들어야 정상작동함
+// id는 임의의 문자열로 그대로 저장하게둠 (정수로 저장할 필요가 없음)
+// 1. 알파벳, 숫자인지 체크 + 길이체크 / 2. 비밀번호 암호화 (라이브러리 사용) ==> 두개는 추후에 처리하기
+app.post('/register', function(req, res){
+    db.collection('login').findOne( {id: req.body.id}, function(err, result){
+        if(result != null) {
+            res.send('[' + result.id + '] 아이디 중복됩니다!');
+        } else {
+            db.collection('login').insertOne( {id: req.body.id, pw: req.body.pw} , function(err, result){
+                res.redirect('/');
+            });
+        }
+    });
+});
+
 /* ------------------------------------------------------------ 마이페이지 ------------------------------------------------------------*/
-//#region
 app.get('/mypage', checkLogin/* 두번째 인자에 넣는 방법으로 미들웨어를 쓴다 */, function(req, res){
     console.log(req.user);
     res.render('mypage.ejs', {user: req.user});
@@ -258,4 +145,163 @@ function checkLogin(req, res, next){
         res.send('로그인이 필요합니다!');
     }
 }
-//#endregion
+
+// 로그아웃 버튼 클릭시
+app.get('/logout', (req, res)=>{
+    req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+        console.log("logout success!");
+    });
+});
+
+
+// 아래 게시글 관련 코드 -> 원래 위에서 작성했는데, 로그인 로직후에 _id 저장할수있으므로 아래로 옮김
+
+/* ------------------------------------------------------------ 게시물 작성 : C ------------------------------------------------------------*/
+// =>(arrow)는 ES6 신문법이고 뭘쓸지는 취향차이 - 함수내부에서 this키워드값이 바뀐다는데 보통상황에선 신경쓸일 없음
+app.get('/write', (req, res) => {
+    // html이였을때 이렇게 하지만 ejs로 바꿈
+    //res.sendFile(__dirname + '/write.html');
+    res.render('write.ejs');
+});
+
+// 어떤사람이 /newpost 경로로 POST 요청을 하면 무엇을 해주세요
+app.post('/newpost', (req, res) => {
+    // input에 작성한 정보가 서버로 전달되네!
+    //console.log(req.body.title); // 요청했던 form의 title 인풋 수신
+    //console.log(req.body); // 요청했던 form 인풋 수신 (object 자료형으로)
+
+    // 시퀀스 만들듯이 번호 생성
+    db.collection('counter').findOne({name: '게시물개수'}, (err, result) => {
+        var counter = result.totalPost; // var는 function안에서만 사용가능
+
+        // author도 추가해야해서 변수로뺌
+        if(req.user != null){
+            var insertData = { _id: counter, title: req.body.title, date: req.body.date, author: req.user._id, author_name: req.user.id }
+        } else {
+            res.send('글작성시 로그인 필요합니다!');
+            return;
+        }
+
+        // 이거 밖에 혼자있었는데 이 콜백함수 안으로 넣음
+        db.collection('post').insertOne(insertData, (err, result) => {
+            // 게시물 번호 1씩 증가 -> $inc : 증가, set : 업데이트 (없으면 추가)
+            // 다수 수정은 updateMany사용
+            // updateOne(수정할 게시물, 수정값, 콜백함수(optional))
+            db.collection('counter').updateOne ({name: '게시물개수'},{$inc:{totalPost:1} /* $set:{totalPost:counter+1} */}, (err, result) => {
+                if(err) return console.log(err);
+            });
+            console.log('저장완료');
+
+            // 알림 띄우고 write페이지로 돌아오게함
+            res.write("<script>alert('success'); location.href='/write'</script>");
+        });
+    });
+});
+
+/* ------------------------------------------------------------ 게시물 삭제 : D ------------------------------------------------------------*/
+app.delete('/delete', function(req, res){
+    console.log(req.body);
+
+    // req.body는 _id : '1' 로 넘어와서 DB상의 _id : 1 (int) 와 안맞으므로 바꿔줌
+    req.body._id = parseInt(req.body._id);
+
+    // author도 추가해야해서 변수로뺌
+    var deleteData = { _id: req.body._id, author: req.user._id}
+
+    // req.body의 게시물번호의 글을 DB에서 삭제
+    db.collection('post').deleteOne(deleteData /* 어떤항목을 삭제할지 (쿼리라고 생각) */, function(err, result){
+        if(result) console.log(result);
+        console.log('삭제완료');
+        res.status(200).send({ message : '성공했습니다!!' }); // 응답코드 200(성공)일때 메세지 보냄 / send의 파라미터가 object형이 아니여도됨
+    });
+});
+
+/* ------------------------------------------------------------ 게시물 읽기 : R ------------------------------------------------------------*/
+// 어떤사람이 /list 경로로 GET 요청을 하면 DB에 저장된 데이터 표시된 HTML 보여주세요
+app.get('/list', function(req, res){
+    // DB데이터 꺼내옴
+    // post라는 collection의 모든데이터 가져옴
+    db.collection('post').find().toArray((err, result) => {
+        console.log(result);
+        // DB에서 가져온 result값을 posts변수안에 넣어줌, 삭제/수정 버튼 활성화를 위해 작성자 정보도 넣어줌
+        if(req.user != null){
+            res.render('list.ejs', {posts: result, author_check: req.user._id});
+        } else {
+            res.render('list.ejs', {posts: result, author_check: ''}); // 로그인 안했을경우
+        }
+    });
+});
+
+// 게시물 검색 - 쿼리스트링 방식
+app.get('/search', (req, res) => {
+    // 원래는 req.body로 폼속성을 가져왔는데, 쿼리스트링은 req.query
+    // 강의에선 정규식을 - 자바스크립트 표현인 /abc/ 로 사용하면 문자열만 안에 넣을 수 있어서 못쓴다고했는데
+    // 1. 아래같은 몽고DB 문법이 있으니 이걸쓰면됨 -> 이게 제일 나은듯...
+    db.collection('post').find({title: {'$regex' : req.query.value}}).toArray((err, result) => {
+
+    // 2. 미리 만들어둔 text index를 이용하여 검색엔진스럽게 검색가능 (빠른검색, 연산자로 검색기능)
+    //db.collection('post').find( {$text: { $search: req.query.value }} ).toArray((err, result) => {
+
+    // 3. MongoDB의 searchIndex 사용
+    // aggregate 사용 (searchIndex 쓰려면 사용해야됨) -> 다양한 기능이 있으므로 노션참고
+    // var 검색조건 = [
+    //     {
+    //       $search: {
+    //         index: 'titleSearch',
+    //         text: {
+    //           query: req.query.value,
+    //           path: 'title'  // 제목,날짜 둘다 찾고 싶으면 ['title', 'date']
+    //         }
+    //       }
+    //     }
+    //     //, {$sort: {_id: 1}} //id기준 오름차순
+    //     //, {$limit: 5} //상위 다섯개만 가져옴
+    //     , {$project: {title: 1, _id: 0, score: {$meta: "searchScore"}}} //검색결과에서 원하는값만 가져옴 (저장한 데이터가 아닌 score라는 값도 가져올수있음) -> SELECT와 유사
+    // ]
+    // db.collection('post').aggregate(검색조건).toArray((err, result) => {
+
+        console.log(result);
+        // 강의에선 검색결과 보여주는 search.ejs 새로 만듬 / 그냥 아래처럼 list.ejs 그대로 써도 될듯?
+        if(req.user != null){
+            res.render('list.ejs', {posts: result, author_check: req.user._id});
+        } else {
+            res.render('list.ejs', {posts: result, author_check: ''}); // 로그인 안했을경우
+        }
+    });
+
+});
+
+/* ------------------------------------------------------------ 게시물 디테일 ------------------------------------------------------------*/
+// detail/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
+app.get('/detail/:id', function(req, res){
+    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
+        if(result == null) {
+            res.send('존재하지 않는 게시물 번호입니다!!!');
+        } else {
+            console.log(result);
+            res.render('detail.ejs', {data : result});
+        }
+    });
+});
+
+/* ------------------------------------------------------------ 게시물 수정 : U ------------------------------------------------------------*/
+// edit/xx 요청오면 xx(URL의 파라미터)에 따라 URL생성
+app.get('/edit/:id', function(req, res){
+    db.collection('post').findOne({_id : parseInt(req.params.id) /*:id를 가져옴*/}, function(err, result){
+        if(result == null) {
+            res.send('존재하지 않는 게시물 번호입니다!!!');
+        } else {
+            console.log(result);
+            res.render('edit.ejs', {data : result});
+        }
+    });
+});
+
+app.put('/editpost', function(req, res){
+    db.collection('post').updateOne({_id: parseInt(req.body.id)}, {$set : {title: req.body.title, date: req.body.date}}, function(err, result){
+        if(err) console.log(err);
+        res.redirect('/list');
+    });
+});

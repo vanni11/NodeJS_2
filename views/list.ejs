@@ -36,10 +36,14 @@
         <a href='/detail/<%=posts[i]._id%>'>
           <p>글번호 : <%= posts[i]._id %></p>
           <h4>할일 제목 : <%= posts[i].title %></h4>
-          <p>할일 마감날짜 : <%= posts[i].date %></p>
+          <h4>할일 날짜 : <%= posts[i].date %></h4>
+          <p>작성자 : <%= posts[i].author_name %></p>
         </a>
+        
+        <% if (posts[i].author.toString() == author_check.toString()) { %>
         <button type="button" class="btn btn-danger delete" data-id="<%=posts[i]._id%>">삭제</button> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
         <button type="button" class="btn btn-warning edit" data-id="<%=posts[i]._id%>" onclick="location.href='/edit/<%=posts[i]._id%>'">수정</button> <!-- data-id 안에 정보숨겨서 참고할수있음 -->
+        <%  } %>
       </li>
       <% } %>
     </ul>
