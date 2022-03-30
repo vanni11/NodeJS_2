@@ -195,7 +195,7 @@ app.post('/newpost', (req, res) => {
             console.log('저장완료');
 
             // 알림 띄우고 write페이지로 돌아오게함
-            res.write("<script>alert('success'); location.href='/write'</script>");
+            res.send("<script>alert('success'); location.href='/write'</script>"); // res.write는 배포했을때 작동안해서 바꿈
         });
     });
 });
@@ -310,4 +310,49 @@ app.put('/editpost', function(req, res){
 // app.use : 미들웨어 사용
 // 경로가 없는것 : 모든 요청,응답때 실행됨 (전역 미들웨어)
 // 경로가 있는것 : 해당 경로에서만 실행됨
-app.use('/shop', require('./routes/shop.js'))
+app.use('/shop', require('./routes/shop.js'));
+
+/* ------------------------------------------------------------ 이미지 업로드 ------------------------------------------------------------*/
+/* -------------------- multer 설정 -------------------- */
+let multer = require('multer');
+var storage = multer.diskStorage({
+    destination: function(req, file, cb){
+        cb(null, './public/image' /* 이미지 저장되는 경로 */);
+    },
+    filename: function(req, file, cb){
+        cb(null, file.originalname + ' date: ' + new Date() /* [기존 파일이름 + 날짜]로 설정 */);
+    }
+});
+
+var path = require('path');
+// 이 변수를 미들웨어처럼 사용
+var upload = multer({
+    storage: storage,
+    // 파일 확장자 필터
+    fileFilter: function(req, file, callback){
+        var ext = path.extname(file.originalname);
+        if(ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') {
+            return callback(new Error('PNG, JPG만 업로드하세요!'));
+        }
+        callback(null, true);
+    },
+    // 파일크기 제한
+    limits: {
+        fileSize: 1024 * 1024
+    }
+});
+/* -------------------- multer 설정 -------------------- */
+
+app.get('/upload', function(req, res) {
+    res.render('upload.ejs');
+});
+
+// 업로드버튼 클릭
+app.post('/upload', upload.single('profile') /* input의 name을 적어야함 */, function(req, res){
+    res.send('업로드 완료!');
+});
+
+// 이미지 보여주는 법 (이미지 API 만들기) -> 화면상에서 구현할땐 아래 이미지를 html의 img src에서 불러오기
+app.get('/image/:imagename', function(req, res){
+    res.sendFile(__dirname + 'public/image/' + req.params.imagename);
+});

@@ -1,0 +1,13 @@
+# 서버세팅
+
+# 필수입력
+runtime: nodejs
+env: flex
+
+# 아래 없으면 구글이 트래픽에 따라 사양맞춰줌
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 1
+  memory_gb: 0.5
+  disk_size_gb: 10
